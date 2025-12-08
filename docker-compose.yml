@@ -1,0 +1,66 @@
+version: '3.8'
+
+services:
+  # Main Radio Application
+  pirate-radio:
+    build: .
+    container_name: pirate-radio
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      - GROQ_API_KEY=${GROQ_API_KEY}
+      - RADIO_LANGUAGE=${RADIO_LANGUAGE:-sr-RS}
+      - VOICE_NEWS=${VOICE_NEWS:-sr-RS-NicholasNeural}
+      - VOICE_WEATHER=${VOICE_WEATHER:-sr-RS-SophieNeural}
+      - NEWS_INTERVAL=${NEWS_INTERVAL:-900}
+      - WEATHER_INTERVAL=${WEATHER_INTERVAL:-1800}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+    volumes:
+      - ./music:/app/music
+      - ./output:/app/output
+      - ./cache:/app/cache
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/status"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Optional: Icecast server for proper streaming
+  icecast:
+    image: moul/icecast
+    container_name: icecast
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - ICECAST_SOURCE_PASSWORD=${ICECAST_PASSWORD:-hackme}
+      - ICECAST_ADMIN_PASSWORD=${ICECAST_ADMIN_PASSWORD:-admin}
+      - ICECAST_RELAY_PASSWORD=${ICECAST_RELAY_PASSWORD:-relay}
+      - ICECAST_HOSTNAME=${ICECAST_HOSTNAME:-localhost}
+    volumes:
+      - ./icecast:/var/log/icecast
+    profiles:
+      - full  # Only starts with: docker-compose --profile full up
+
+  # Optional: Nginx reverse proxy
+  nginx:
+    image: nginx:alpine
+    container_name: nginx-radio
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./certbot/conf:/etc/letsencrypt:ro
+      - ./certbot/www:/var/www/certbot:ro
+    depends_on:
+      - pirate-radio
+    profiles:
+      - production
+
+volumes:
+  music:
+  output:
+  cache:
