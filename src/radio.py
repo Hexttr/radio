@@ -172,7 +172,7 @@ class PirateRadio:
             news_audio = await self.tts.generate_news_audio(script)
             
             # 4. Add jingle before news
-            jingle = await self.tts.generate_jingle("Vijesti na Pirate Radiju.")
+            jingle = await self.tts.generate_jingle(config.JINGLE_NEWS)
             
             # 5. Mix with background music
             mixed_audio = await self.mixer.mix_voice_with_music(

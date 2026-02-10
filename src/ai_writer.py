@@ -33,30 +33,26 @@ class AIWriter:
             for i, item in enumerate(news_items)
         ])
         
-        prompt = f"""Napiši kratak radio segment vijesti na osnovu sljedećih tema.
-        
-VIJESTI:
+        lang = config.PROMPT_LANG
+        rules = config.NEWS_PROMPT_LANG.get(lang, config.NEWS_PROMPT_LANG["en"])
+        prompt = f"""Write a short radio news segment based on these items.
+
+ITEMS:
 {news_text}
 
-PRAVILA:
-- Piši na srpskom jeziku (ćirilica ili latinica, svejedno)
-- Svaka vijest maksimalno 2-3 rečenice
-- Dodaj prirodne prelaze između vijesti ("A sada...", "U drugim vijestima...")
-- Počni sa pozdravom slušaocima
-- Završi sa "To su bile vijesti, vraćamo se muzici"
-- Ukupno ne više od 300 riječi
-- Ne koristi emoji ili specijalne znakove
+{rules}
 
-STIL: {config.NEWS_STYLE}"""
+STYLE: {config.NEWS_STYLE}"""
 
         if not self.client:
             logger.warning("GROQ_API_KEY not set - using filler. Get free key at console.groq.com")
             return self._generate_filler()
+        system_prompt = config.NEWS_SYSTEM_PROMPTS.get(lang, config.NEWS_SYSTEM_PROMPTS["en"]).format(style=config.NEWS_STYLE)
         try:
             response = await self.client.chat.completions.create(
                 model=config.GROQ_MODEL,
                 messages=[
-                    {"role": "system", "content": config.NEWS_SYSTEM_PROMPT.format(style=config.NEWS_STYLE)},
+                    {"role": "system", "content": system_prompt},
                     {"role": "user", "content": prompt}
                 ],
                 max_tokens=1000,
@@ -75,23 +71,29 @@ STIL: {config.NEWS_STYLE}"""
         """Generate a weather report"""
         
         if not weather_data:
-            return "Vremensku prognozu trenutno ne možemo da vam prenesemo."
+            fallbacks = {"ru": "Прогноз погоды временно недоступен.", "en": "Weather forecast is temporarily unavailable.", "sr": "Vremensku prognozu trenutno ne možemo da vam prenesemo."}
+            return fallbacks.get(config.PROMPT_LANG, fallbacks["en"])
         
-        prompt = config.WEATHER_PROMPT.format(
-            city=weather_data.get("city", "Beograd"),
+        lang = config.PROMPT_LANG
+        tmpl = config.WEATHER_PROMPTS.get(lang, config.WEATHER_PROMPTS["en"])
+        prompt = tmpl.format(
+            city=weather_data.get("city", "Belgrade"),
             temp=weather_data.get("temp", "?"),
             description=weather_data.get("description", ""),
             humidity=weather_data.get("humidity", "?"),
             wind=weather_data.get("wind", "?"),
         )
         
+        weather_system = {"ru": "Ты ведущий, читаешь прогноз погоды. Кратко и естественно.", "en": "You are a radio host reading the weather. Be brief and natural.", "sr": "Ti si radio voditelj koji čita vremensku prognozu. Budi kratak i prirodan."}
         if not self.client:
-            return f"U {weather_data.get('city', 'gradu')} je trenutno {weather_data.get('temp', '?')} stepeni."
+            city = weather_data.get("city", "")
+            temp = weather_data.get("temp", "?")
+            return {"ru": f"В {city} сейчас {temp} градусов.", "en": f"In {city} it's {temp} degrees.", "sr": f"U {city} je trenutno {temp} stepeni."}.get(lang, f"In {city} {temp}°C.")
         try:
             response = await self.client.chat.completions.create(
                 model=config.GROQ_MODEL,
                 messages=[
-                    {"role": "system", "content": "Ti si radio voditelj koji čita vremensku prognozu. Budi kratak i prirodan."},
+                    {"role": "system", "content": weather_system.get(lang, weather_system["en"])},
                     {"role": "user", "content": prompt}
                 ],
                 max_tokens=200,
@@ -102,26 +104,18 @@ STIL: {config.NEWS_STYLE}"""
             
         except Exception as e:
             logger.error(f"Weather generation error: {e}")
-            return f"U {weather_data.get('city', 'gradu')} je trenutno {weather_data.get('temp', '?')} stepeni."
+            city = weather_data.get("city", "")
+            temp = weather_data.get("temp", "?")
+            return {"ru": f"В {city} сейчас {temp} градусов.", "en": f"In {city} {temp}°C.", "sr": f"U {city} je trenutno {temp} stepeni."}.get(lang, f"In {city} {temp}°C.")
     
     async def generate_intro(self) -> str:
         """Generate a radio intro/jingle text"""
-        intros = [
-            "Dobrodošli na Pirate AI Radio! Vaš izvor muzike i informacija, dvadeset četiri sata dnevno.",
-            "Ovo je Pirate Radio. Automatizovano. Beskonačno. Samo za vas.",
-            "Pirate AI Radio na talasima! Ostanite s nama.",
-            "Slušate Pirate Radio, gdje tehnologija sreće muziku.",
-        ]
+        intros = config.INTRO_TEXTS.get(config.PROMPT_LANG, config.INTRO_TEXTS["en"])
         return random.choice(intros)
     
     async def generate_outro(self) -> str:
         """Generate segment outro"""
-        outros = [
-            "To su bile vijesti. Nastavite da nas slušate.",
-            "Hvala što ste bili s nama. Muzika se vraća.",
-            "Pirate Radio nastavlja sa programom.",
-            "Ostanite na vezi, vraćamo se nakon muzike.",
-        ]
+        outros = config.OUTRO_TEXTS.get(config.PROMPT_LANG, config.OUTRO_TEXTS["en"])
         return random.choice(outros)
     
     async def generate_time_announcement(self) -> str:
@@ -130,24 +124,26 @@ STIL: {config.NEWS_STYLE}"""
         now = datetime.now()
         hour = now.hour
         minute = now.minute
-        
-        time_text = f"{hour} sati i {minute} minuta" if minute > 0 else f"{hour} sati"
-        
-        templates = [
-            f"Tačno je {time_text}.",
-            f"Vrijeme je {time_text}. Slušate Pirate Radio.",
-            f"Na Pirate Radiju je {time_text}.",
-        ]
-        return random.choice(templates)
+        lang = config.PROMPT_LANG
+        if lang == "ru":
+            time_text = f"{hour} часов {minute} минут" if minute > 0 else f"{hour} часов"
+        elif lang == "en":
+            time_text = f"{hour} {minute}" if minute > 0 else f"{hour} o'clock"
+        else:
+            time_text = f"{hour} sati i {minute} minuta" if minute > 0 else f"{hour} sati"
+        templates = config.TIME_TEMPLATES.get(lang, config.TIME_TEMPLATES["en"])
+        return random.choice(templates).format(time=time_text)
     
     async def generate_custom_segment(self, topic: str, style: str = "informative") -> str:
         """Generate custom content segment"""
-        prompt = f"""Napiši kratak radio segment na temu: {topic}
+        lang_name = {"ru": "русском", "en": "English", "sr": "srpskom"}
+        ln = lang_name.get(config.PROMPT_LANG, "English")
+        prompt = f"""Write a short radio segment about: {topic}
 
-STIL: {style}
-DUŽINA: 50-100 riječi
-JEZIK: srpski
-NE KORISTI: emoji, specijalne znakove"""
+STYLE: {style}
+LENGTH: 50-100 words
+LANGUAGE: {ln}
+NO emoji or special characters"""
 
         if not self.client:
             return ""
@@ -155,7 +151,7 @@ NE KORISTI: emoji, specijalne znakove"""
             response = await self.client.chat.completions.create(
                 model=config.GROQ_MODEL,
                 messages=[
-                    {"role": "system", "content": "Ti si kreativni radio voditelj."},
+                    {"role": "system", "content": "You are a creative radio host."},
                     {"role": "user", "content": prompt}
                 ],
                 max_tokens=300,
@@ -169,11 +165,7 @@ NE KORISTI: emoji, specijalne znakove"""
     
     def _generate_filler(self) -> str:
         """Generate filler content when API fails"""
-        fillers = [
-            "Trenutno nemamo novih vijesti. Nastavite da uživate u muzici na Pirate Radiju.",
-            "Vijesti se pripremaju. U međuvremenu, uživajte u muzici.",
-            "Hvala što slušate Pirate Radio. Vijesti stižu uskoro.",
-        ]
+        fillers = config.FILLER_TEXTS.get(config.PROMPT_LANG, config.FILLER_TEXTS["en"])
         return random.choice(fillers)
 
 

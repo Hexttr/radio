@@ -207,20 +207,24 @@ class SimpleHTTPStreamer:
         )
         await response.prepare(request)
         
+        silence_path = config.OUTPUT_DIR / "silence.mp3"
+        
         try:
             while True:
                 if self.playlist:
                     audio_file = self.playlist[0]
-                    
-                    # Stream the file
                     async for chunk in self._read_audio_file(audio_file):
                         await response.write(chunk)
-                    
-                    # Move to next
                     self.playlist.popleft()
                 else:
-                    # No audio, send silence
-                    await asyncio.sleep(0.1)
+                    # Keep stream alive with silence so client doesn't freeze
+                    if silence_path.exists():
+                        async for chunk in self._read_audio_file(silence_path):
+                            await response.write(chunk)
+                            if self.playlist:
+                                break
+                    else:
+                        await asyncio.sleep(0.05)
                     
         except asyncio.CancelledError:
             pass
@@ -230,17 +234,27 @@ class SimpleHTTPStreamer:
         return response
     
     async def _read_audio_file(self, path: Path) -> AsyncIterator[bytes]:
-        """Read audio file in chunks"""
+        """Read audio file in chunks (non-blocking to avoid freezing the event loop)"""
         chunk_size = 8192
+        # ~128 kbps = 16000 bytes/sec → sleep per chunk
+        throttle = chunk_size / (config.STREAM_BITRATE * 1000 / 8)
         
-        with open(path, 'rb') as f:
-            while True:
-                chunk = f.read(chunk_size)
-                if not chunk:
-                    break
-                yield chunk
-                # Throttle to approximate real-time playback
-                await asyncio.sleep(chunk_size / (config.STREAM_BITRATE * 128))
+        def read_chunk(f):
+            return f.read(chunk_size)
+        
+        try:
+            with open(path, 'rb') as f:
+                loop = asyncio.get_event_loop()
+                while True:
+                    chunk = await loop.run_in_executor(None, lambda: f.read(chunk_size))
+                    if not chunk:
+                        break
+                    yield chunk
+                    await asyncio.sleep(throttle)
+        except FileNotFoundError:
+            logger.warning(f"Stream: file not found {path}")
+        except Exception as e:
+            logger.error(f"Stream read error: {e}")
     
     async def _handle_status(self, request):
         """Return stream status"""
