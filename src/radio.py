@@ -255,18 +255,26 @@ class PirateRadio:
         music_files = self.mixer.get_music_library()
         
         if not music_files:
-            # Generate silence if no music
+            # Generate silence if no music (add your tracks to music/ folder)
             silence_path = config.OUTPUT_DIR / "silence.mp3"
             if not silence_path.exists():
-                await asyncio.create_subprocess_exec(
-                    "ffmpeg", "-y",
-                    "-f", "lavfi",
-                    "-i", "anullsrc=r=44100:cl=stereo",
-                    "-t", "30",
-                    "-c:a", "libmp3lame",
-                    str(silence_path)
-                )
-            self.streamer.add_to_playlist(silence_path)
+                try:
+                    proc = await asyncio.create_subprocess_exec(
+                        "ffmpeg", "-y",
+                        "-f", "lavfi",
+                        "-i", "anullsrc=r=44100:cl=stereo",
+                        "-t", "30",
+                        "-c:a", "libmp3lame",
+                        str(silence_path),
+                        stdout=asyncio.subprocess.DEVNULL,
+                        stderr=asyncio.subprocess.DEVNULL,
+                    )
+                    await proc.wait()
+                except FileNotFoundError:
+                    logger.warning("FFmpeg not found. Install FFmpeg for full playback. Add MP3 files to music/.")
+                    return
+            if silence_path.exists():
+                self.streamer.add_to_playlist(silence_path)
             return
         
         import random
@@ -292,15 +300,16 @@ async def main():
     """Main entry point"""
     radio = PirateRadio()
     
-    # Handle shutdown signals
-    loop = asyncio.get_event_loop()
-    
-    def shutdown_handler():
-        logger.info("Received shutdown signal")
-        asyncio.create_task(radio.stop())
-    
-    for sig in (signal.SIGTERM, signal.SIGINT):
-        loop.add_signal_handler(sig, shutdown_handler)
+    # Handle shutdown signals (SIGTERM not on Windows)
+    try:
+        loop = asyncio.get_running_loop()
+        def shutdown_handler():
+            logger.info("Received shutdown signal")
+            asyncio.create_task(radio.stop())
+        for sig in (signal.SIGTERM, signal.SIGINT):
+            loop.add_signal_handler(sig, shutdown_handler)
+    except NotImplementedError:
+        pass  # Windows: use Ctrl+C only
     
     try:
         await radio.start()

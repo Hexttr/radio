@@ -18,7 +18,8 @@ class AIWriter:
     """Generates radio scripts using Llama via Groq"""
     
     def __init__(self):
-        self.client = AsyncGroq(api_key=config.GROQ_API_KEY)
+        self.api_key = (config.GROQ_API_KEY or "").strip()
+        self.client = AsyncGroq(api_key=self.api_key) if self.api_key else None
         
     async def generate_news_segment(self, news_items: List[NewsItem]) -> str:
         """Generate a complete news segment from news items"""
@@ -48,6 +49,9 @@ PRAVILA:
 
 STIL: {config.NEWS_STYLE}"""
 
+        if not self.client:
+            logger.warning("GROQ_API_KEY not set - using filler. Get free key at console.groq.com")
+            return self._generate_filler()
         try:
             response = await self.client.chat.completions.create(
                 model=config.GROQ_MODEL,
@@ -81,6 +85,8 @@ STIL: {config.NEWS_STYLE}"""
             wind=weather_data.get("wind", "?"),
         )
         
+        if not self.client:
+            return f"U {weather_data.get('city', 'gradu')} je trenutno {weather_data.get('temp', '?')} stepeni."
         try:
             response = await self.client.chat.completions.create(
                 model=config.GROQ_MODEL,
@@ -143,6 +149,8 @@ DUŽINA: 50-100 riječi
 JEZIK: srpski
 NE KORISTI: emoji, specijalne znakove"""
 
+        if not self.client:
+            return ""
         try:
             response = await self.client.chat.completions.create(
                 model=config.GROQ_MODEL,

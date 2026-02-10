@@ -4,6 +4,13 @@ Pirate Radio AI - Configuration
 import os
 from pathlib import Path
 
+# Load .env if present
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass
+
 # Paths
 BASE_DIR = Path(__file__).parent
 MUSIC_DIR = BASE_DIR / "music"

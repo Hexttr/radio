@@ -21,16 +21,19 @@ class AudioMixer:
     def __init__(self):
         self.music_dir = config.MUSIC_DIR
         self.output_dir = config.OUTPUT_DIR
-        self._verify_ffmpeg()
+        self._ffmpeg_ok = None  # Lazy check
         
-    def _verify_ffmpeg(self):
-        """Check if FFmpeg is available"""
-        try:
-            subprocess.run(["ffmpeg", "-version"], capture_output=True, check=True)
-            logger.debug("FFmpeg found")
-        except (subprocess.CalledProcessError, FileNotFoundError):
-            logger.error("FFmpeg not found! Please install FFmpeg.")
-            raise RuntimeError("FFmpeg is required")
+    def _verify_ffmpeg(self) -> bool:
+        """Check if FFmpeg is available (lazy). Returns True if OK."""
+        if self._ffmpeg_ok is None:
+            try:
+                subprocess.run(["ffmpeg", "-version"], capture_output=True, check=True)
+                self._ffmpeg_ok = True
+                logger.debug("FFmpeg found")
+            except (subprocess.CalledProcessError, FileNotFoundError):
+                self._ffmpeg_ok = False
+                logger.warning("FFmpeg not found. Install FFmpeg for mixing and music: https://ffmpeg.org")
+        return self._ffmpeg_ok
     
     async def mix_voice_with_music(
         self,
@@ -50,6 +53,10 @@ class AudioMixer:
         """
         music_volume = music_volume or config.MUSIC_VOLUME
         output_path = output_path or self.output_dir / "mixed_segment.mp3"
+        
+        if not self._verify_ffmpeg():
+            shutil.copy(voice_path, output_path)
+            return output_path
         
         # Get music if not specified
         if music_path is None:
@@ -206,6 +213,8 @@ class AudioMixer:
         fade_out: float = 2
     ) -> Path:
         """Prepare a music track with fades and optional trimming"""
+        if not self._verify_ffmpeg():
+            return music_path  # Return as-is if no FFmpeg
         duration = duration or config.MUSIC_TRACK_LENGTH
         output_path = self.output_dir / f"music_{music_path.stem}.mp3"
         

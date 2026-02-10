@@ -26,22 +26,36 @@
 └─────────────────────────────────────────────────────────────┘
 ```
 
+## 📖 Подробный гайд
+
+**Пошаговая инструкция по запуску:** [LAUNCH.md](LAUNCH.md) — установка Python, FFmpeg, зависимости, настройка `.env`, музыка, запуск и пуш в GitHub.
+
+---
+
 ## 🚀 Quick Start
 
+### Windows (локально)
+
+1. Установите **Python 3.10+**. Для микширования музыки и генерации тишины нужен **FFmpeg** ([скачать](https://ffmpeg.org), добавить в PATH); без него запустится только TTS и поток.
+2. В папке проекта: `pip install -r requirements.txt`
+3. (Опционально) В файле `.env` укажите `GROQ_API_KEY` — бесплатный ключ на [console.groq.com](https://console.groq.com) для AI-новостей.
+4. Положите свои треки в папку **`music/`** (MP3, WAV, OGG, FLAC). Если папка пуста — между эфиром будет тишина, пока вы не добавите файлы.
+5. Запуск: двойной клик по **`run.bat`** или в терминале:
+   ```bash
+   python -m src.radio
+   ```
+6. Откройте в браузере: **http://localhost:8080** — там плеер и поток `/stream`.
+
+### Docker
+
 ```bash
-# 1. Clone i setup
-git clone https://github.com/yourname/pirate-radio-ai
-cd pirate-radio-ai
-
-# 2. Kreiraj .env fajl
-cp .env.example .env
-# Dodaj GROQ_API_KEY (besplatan na console.groq.com)
-
-# 3. Pokreni sa Docker
+# 1. Создайте .env и добавьте GROQ_API_KEY (по желанию)
+# 2. Запуск
 docker-compose up -d
 
-# 4. Slušaj na
-# http://localhost:8000/stream
+# 3. Слушать
+# http://localhost:8080/   (веб-плеер)
+# http://localhost:8080/stream  (поток)
 ```
 
 ## 📁 Struktura
@@ -84,11 +98,11 @@ Za engleski:
 - `en-US-GuyNeural` (muški)
 - `en-US-JennyNeural` (ženski)
 
-## 📻 Stream URL-ovi
+## 📻 Адреса потока
 
-- **Direct Stream:** `http://your-ip:8000/stream`
-- **Playlist:** `http://your-ip:8000/stream.m3u`
-- **Status:** `http://your-ip:8000/status-json.xsl`
+- **Веб-плеер:** `http://localhost:8080/`
+- **Поток MP3:** `http://localhost:8080/stream`
+- **Статус (JSON):** `http://localhost:8080/status`
 
 ## 🆓 Besplatni Servisi
 
