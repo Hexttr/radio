@@ -27,12 +27,12 @@ class AudioMixer:
         """Check if FFmpeg is available (lazy). Returns True if OK."""
         if self._ffmpeg_ok is None:
             try:
-                subprocess.run(["ffmpeg", "-version"], capture_output=True, check=True)
+                subprocess.run([config.FFMPEG_CMD, "-version"], capture_output=True, check=True)
                 self._ffmpeg_ok = True
                 logger.debug("FFmpeg found")
             except (subprocess.CalledProcessError, FileNotFoundError):
                 self._ffmpeg_ok = False
-                logger.warning("FFmpeg not found. Install FFmpeg for mixing and music: https://ffmpeg.org")
+                logger.warning("FFmpeg not found. Set FFMPEG_BIN_DIR in .env or PATH. https://ffmpeg.org")
         return self._ffmpeg_ok
     
     async def mix_voice_with_music(
@@ -73,7 +73,7 @@ class AudioMixer:
         # FFmpeg command to mix audio
         # Voice at full volume, music lowered
         cmd = [
-            "ffmpeg", "-y",
+            config.FFMPEG_CMD, "-y",
             "-i", str(voice_path),
             "-i", str(music_path),
             "-filter_complex",
@@ -139,7 +139,7 @@ class AudioMixer:
         
         # FFmpeg concat
         cmd = [
-            "ffmpeg", "-y",
+            config.FFMPEG_CMD, "-y",
             "-f", "concat",
             "-safe", "0",
             "-i", str(list_file),
@@ -228,7 +228,7 @@ class AudioMixer:
         filter_str = ",".join(filters) if filters else "anull"
         
         cmd = [
-            "ffmpeg", "-y",
+            config.FFMPEG_CMD, "-y",
             "-i", str(music_path),
             "-t", str(duration),
             "-af", filter_str,
@@ -249,7 +249,7 @@ class AudioMixer:
     async def _get_duration(self, audio_path: Path) -> float:
         """Get audio file duration in seconds"""
         cmd = [
-            "ffprobe",
+            config.FFPROBE_CMD,
             "-v", "error",
             "-show_entries", "format=duration",
             "-of", "default=noprint_wrappers=1:nokey=1",
@@ -307,7 +307,7 @@ class MusicDownloader:
         if not sample_path.exists():
             # Generate a simple beat using FFmpeg
             cmd = [
-                "ffmpeg", "-y",
+                config.FFMPEG_CMD, "-y",
                 "-f", "lavfi",
                 "-i", "sine=frequency=440:duration=180",  # 3 min tone
                 "-c:a", "libmp3lame",

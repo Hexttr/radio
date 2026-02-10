@@ -80,7 +80,7 @@ class IcecastStreamer:
         )
         
         cmd = [
-            "ffmpeg",
+            config.FFMPEG_CMD,
             "-re",  # Read at native speed
             "-i", str(audio_path),
             "-c:a", "libmp3lame",
@@ -138,7 +138,7 @@ class DirectStreamer:
         output_dir.mkdir(exist_ok=True)
         
         cmd = [
-            "ffmpeg",
+            config.FFMPEG_CMD,
             "-re",
             "-f", "concat",
             "-safe", "0",

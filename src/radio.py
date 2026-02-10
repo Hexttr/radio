@@ -44,7 +44,7 @@ class PirateRadio:
         self.writer = AIWriter()
         self.tts = TTSEngine()
         self.mixer = AudioMixer()
-        self.streamer = SimpleHTTPStreamer(port=8080)
+        self.streamer = SimpleHTTPStreamer(port=9090)
         
         self.is_running = False
         self.last_news_time: Optional[datetime] = None
@@ -78,7 +78,7 @@ class PirateRadio:
         await self._generate_jingle()
         await self._generate_intro()
         
-        logger.info(f"📻 Radio is LIVE at http://localhost:8080")
+        logger.info(f"📻 Radio is LIVE at http://localhost:9090")
         
         # Wait for shutdown
         try:
@@ -260,7 +260,7 @@ class PirateRadio:
             if not silence_path.exists():
                 try:
                     proc = await asyncio.create_subprocess_exec(
-                        "ffmpeg", "-y",
+                        config.FFMPEG_CMD, "-y",
                         "-f", "lavfi",
                         "-i", "anullsrc=r=44100:cl=stereo",
                         "-t", "30",
@@ -271,7 +271,7 @@ class PirateRadio:
                     )
                     await proc.wait()
                 except FileNotFoundError:
-                    logger.warning("FFmpeg not found. Install FFmpeg for full playback. Add MP3 files to music/.")
+                    logger.warning("FFmpeg not found. Set FFMPEG_BIN_DIR in .env. Add MP3 files to music/.")
                     return
             if silence_path.exists():
                 self.streamer.add_to_playlist(silence_path)

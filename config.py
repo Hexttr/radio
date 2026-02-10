@@ -2,6 +2,7 @@
 Pirate Radio AI - Configuration
 """
 import os
+import sys
 from pathlib import Path
 
 # Load .env if present
@@ -10,6 +11,17 @@ try:
     load_dotenv()
 except ImportError:
     pass
+
+# FFmpeg (path to bin folder with ffmpeg.exe / ffprobe.exe)
+FFMPEG_BIN_DIR = os.getenv("FFMPEG_BIN_DIR", "").strip().replace("/", os.sep)
+if FFMPEG_BIN_DIR:
+    _ff = "ffmpeg.exe" if sys.platform == "win32" else "ffmpeg"
+    _fp = "ffprobe.exe" if sys.platform == "win32" else "ffprobe"
+    FFMPEG_CMD = os.path.join(FFMPEG_BIN_DIR, _ff)
+    FFPROBE_CMD = os.path.join(FFMPEG_BIN_DIR, _fp)
+else:
+    FFMPEG_CMD = "ffmpeg"
+    FFPROBE_CMD = "ffprobe"
 
 # Paths
 BASE_DIR = Path(__file__).parent
