@@ -1,12 +1,11 @@
 """
 Pirate Radio AI - AI News Writer
-Generates radio-ready news scripts using Groq (Llama)
+Поддержка Groq (облако) и Ollama (локально).
 """
 import asyncio
 import logging
 import random
-from typing import List, Optional
-from groq import AsyncGroq
+from typing import List, Optional, Any
 
 import config
 from src.scraper import NewsItem
@@ -14,12 +13,37 @@ from src.scraper import NewsItem
 logger = logging.getLogger(__name__)
 
 
+def _create_ai_client() -> Any:
+    """Создаёт клиент: Groq или OpenAI-совместимый (Ollama)."""
+    backend = config.AI_BACKEND
+    if backend == "ollama":
+        from openai import AsyncOpenAI
+        logger.info("AI backend: Ollama (local)")
+        return AsyncOpenAI(
+            base_url=config.OLLAMA_BASE_URL,
+            api_key="ollama",
+        )
+    else:
+        from groq import AsyncGroq
+        key = (config.GROQ_API_KEY or "").strip()
+        if not key:
+            return None
+        logger.info("AI backend: Groq (cloud)")
+        return AsyncGroq(api_key=key)
+
+
+def _get_model() -> str:
+    if config.AI_BACKEND == "ollama":
+        return config.OLLAMA_MODEL
+    return config.GROQ_MODEL
+
+
 class AIWriter:
-    """Generates radio scripts using Llama via Groq"""
+    """Generates radio scripts using Groq or Ollama (OpenAI-compatible)"""
     
     def __init__(self):
-        self.api_key = (config.GROQ_API_KEY or "").strip()
-        self.client = AsyncGroq(api_key=self.api_key) if self.api_key else None
+        self.client = _create_ai_client()
+        self.model = _get_model()
         
     async def generate_news_segment(self, news_items: List[NewsItem]) -> Optional[str]:
         """Generate a complete news segment from news items. Returns None to skip (no filler)."""
@@ -45,12 +69,12 @@ ITEMS:
 STYLE: {config.NEWS_STYLE}"""
 
         if not self.client:
-            logger.warning("GROQ_API_KEY not set - skipping news. Get free key at console.groq.com")
+            logger.warning("AI not configured: set GROQ_API_KEY or AI_BACKEND=ollama")
             return None
         system_prompt = config.NEWS_SYSTEM_PROMPTS.get(lang, config.NEWS_SYSTEM_PROMPTS["en"]).format(style=config.NEWS_STYLE)
         try:
             response = await self.client.chat.completions.create(
-                model=config.GROQ_MODEL,
+                model=self.model,
                 messages=[
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": prompt}
@@ -64,7 +88,7 @@ STYLE: {config.NEWS_STYLE}"""
             return script
             
         except Exception as e:
-            logger.error(f"AI generation error: {e}")
+            logger.error(f"📰 AI news error: {e}")
             return None
     
     async def generate_weather_report(self, weather_data: dict) -> str:
@@ -91,7 +115,7 @@ STYLE: {config.NEWS_STYLE}"""
             return {"ru": f"В {city} сейчас {temp} градусов.", "en": f"In {city} it's {temp} degrees.", "sr": f"U {city} je trenutno {temp} stepeni."}.get(lang, f"In {city} {temp}°C.")
         try:
             response = await self.client.chat.completions.create(
-                model=config.GROQ_MODEL,
+                model=self.model,
                 messages=[
                     {"role": "system", "content": weather_system.get(lang, weather_system["en"])},
                     {"role": "user", "content": prompt}
@@ -149,7 +173,7 @@ NO emoji or special characters"""
             return ""
         try:
             response = await self.client.chat.completions.create(
-                model=config.GROQ_MODEL,
+                model=self.model,
                 messages=[
                     {"role": "system", "content": "You are a creative radio host."},
                     {"role": "user", "content": prompt}

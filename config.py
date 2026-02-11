@@ -55,9 +55,12 @@ CHANNELS = 1
 MUSIC_VOLUME = float(os.getenv("MUSIC_VOLUME", "0.3"))  # Background music during talk
 CROSSFADE_DURATION = 2  # seconds
 
-# AI Settings
+# AI Settings (Groq или Ollama — локально)
+AI_BACKEND = os.getenv("AI_BACKEND", "groq").lower()  # groq | ollama
 GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
 GROQ_MODEL = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
+OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434/v1")
+OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "llama3.1:8b")
 NEWS_STYLE = os.getenv("NEWS_STYLE", "professional")  # professional, casual, dramatic
 
 # Scraper Settings

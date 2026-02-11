@@ -46,6 +46,7 @@ class PirateRadio:
         self.mixer = AudioMixer()
         self.streamer = SimpleHTTPStreamer(port=config.STREAM_PORT)
         
+        self.dj_phrases_cache: list = []  # Предсгенерированные реплики диджея
         self.is_running = False
         self.last_news_time: Optional[datetime] = None
         self.last_weather_time: Optional[datetime] = None
@@ -69,20 +70,20 @@ class PirateRadio:
         # Start stream server
         await self.streamer.start()
         
-        # Start background tasks
-        self._news_task = asyncio.create_task(self._news_loop())
-        self._weather_task = asyncio.create_task(self._weather_loop())
-        self._music_task = asyncio.create_task(self._music_loop())
-        
-        # Generate initial content
+        # Сначала джингл и интро — до старта music_loop, чтобы порядок был верный
         await self._generate_jingle()
         await self._generate_intro()
         
-        # Предзаполняем плейлист для 24/7 (буфер 5+ позиций)
+        # Предзаполняем плейлист (буфер 5+ позиций)
         for _ in range(5):
             if len(self.streamer.playlist) >= 6:
                 break
             await self._add_music_track()
+        
+        # Теперь запускаем фоновые задачи
+        self._news_task = asyncio.create_task(self._news_loop())
+        self._weather_task = asyncio.create_task(self._weather_loop())
+        self._music_task = asyncio.create_task(self._music_loop())
         
         logger.info(f"📻 Radio is LIVE at http://localhost:{config.STREAM_PORT}")
         
@@ -144,12 +145,39 @@ class PirateRadio:
         if not list(config.MUSIC_DIR.glob("*.mp3")):
             logger.info("No music found, generating sample...")
             await MusicDownloader.download_sample_music()
+        
+        # Предсгенерировать реплики диджея (избежать падений TTS во время эфира)
+        await self._warm_dj_phrases()
     
+    async def _warm_dj_phrases(self):
+        """Pre-generate DJ phrases at startup for reliable playback"""
+        phrases = getattr(config, "DJ_PHRASES_RU", [])
+        if not phrases:
+            return
+        import random
+        # Генерируем до 10 разных фраз (случайный выбор) с паузами между вызовами TTS
+        to_generate = list(set(random.choices(phrases, k=min(10, len(phrases)))))
+        for i, phrase in enumerate(to_generate):
+            try:
+                path = await self.tts.synthesize(
+                    phrase,
+                    voice=config.VOICE_JINGLE,
+                    output_path=None,
+                )
+                if path and path.exists():
+                    self.dj_phrases_cache.append(path)
+            except Exception as e:
+                logger.warning(f"DJ phrase pregen skip '{phrase[:30]}...': {e}")
+            if i < len(to_generate) - 1:
+                await asyncio.sleep(0.5)  # Пауза между TTS-запросами
+        logger.info(f"Pre-generated {len(self.dj_phrases_cache)} DJ phrases")
+
     async def _generate_jingle(self) -> Path:
         """Generate and queue a jingle"""
         logger.info("Generating jingle...")
         jingle_path = await self.tts.generate_jingle()
         self.streamer.add_to_playlist(jingle_path)
+        logger.info("🔔 JINGLE added")
         return jingle_path
     
     async def _generate_intro(self):
@@ -160,6 +188,7 @@ class PirateRadio:
             output_path=config.OUTPUT_DIR / "intro.mp3"
         )
         self.streamer.add_to_playlist(intro_audio)
+        logger.info("📢 INTRO added")
     
     async def _news_loop(self):
         """Background task: Generate news periodically"""
@@ -197,8 +226,8 @@ class PirateRadio:
             # 2. Generate script (None = skip, no filler)
             script = await self.writer.generate_news_segment(news_items[:config.MAX_NEWS_ITEMS])
             if not script:
+                logger.warning("📰 News SKIP: AI returned no script (check GROQ_API_KEY, 403=key invalid or geo-blocked)")
                 return
-            logger.debug(f"News script: {script[:100]}...")
             
             # 3. Convert to speech
             news_audio = await self.tts.generate_news_audio(script)
@@ -215,8 +244,7 @@ class PirateRadio:
             # 6. Queue: Jingle -> News
             self.streamer.add_to_playlist(jingle)
             self.streamer.add_to_playlist(mixed_audio)
-            
-            logger.info("✅ News segment queued")
+            logger.info("✅ News: jingle + mixed_audio queued")
             
         except Exception as e:
             logger.error(f"News generation failed: {e}")
@@ -250,6 +278,7 @@ class PirateRadio:
                 weather_data = await fetcher.get_weather()
             
             if not weather_data:
+                logger.warning("🌤️ Weather SKIP: no data from API (wttr.in may block)")
                 return
             
             # 2. Generate script
@@ -260,8 +289,7 @@ class PirateRadio:
             
             # 4. Queue
             self.streamer.add_to_playlist(weather_audio)
-            
-            logger.info("✅ Weather segment queued")
+            logger.info("✅ Weather queued")
             
         except Exception as e:
             logger.error(f"Weather generation failed: {e}")
@@ -282,15 +310,6 @@ class PirateRadio:
                 logger.error(f"Music loop error: {e}")
                 await asyncio.sleep(10)
     
-    def _is_news_or_weather_due(self) -> bool:
-        """Check if news or weather is scheduled (skip DJ phrase before those)"""
-        now = datetime.now()
-        news_due = (self.last_news_time is None or
-                    now - self.last_news_time > timedelta(seconds=config.NEWS_INTERVAL))
-        weather_due = (self.last_weather_time is None or
-                       now - self.last_weather_time > timedelta(seconds=config.WEATHER_INTERVAL))
-        return news_due or weather_due
-
     async def _add_music_track(self):
         """Add a music track to playlist"""
         music_files = self.mixer.get_music_library()
@@ -321,25 +340,26 @@ class PirateRadio:
         import random
         track = random.choice(music_files)
         
-        # Реплика диджея перед каждым треком (если не запланированы новости или погода)
-        phrases = getattr(config, "DJ_PHRASES_RU", [])
-        if phrases and not self._is_news_or_weather_due():
-            phrase = random.choice(phrases)
+        # Реплика диджея перед каждым треком
+        if self.dj_phrases_cache:
+            dj_path = random.choice(self.dj_phrases_cache)
+            self.streamer.add_to_playlist(dj_path)
+            logger.info(f"🎤 DJ: {dj_path.name}")
+        elif getattr(config, "DJ_PHRASES_RU", []):
+            phrase = random.choice(config.DJ_PHRASES_RU)
             try:
                 dj_audio = await self.tts.synthesize(
-                    phrase,
-                    voice=config.VOICE_JINGLE,
-                    output_path=None,  # TTS выберет путь, кеш по содержимому
+                    phrase, voice=config.VOICE_JINGLE, output_path=None,
                 )
                 self.streamer.add_to_playlist(dj_audio)
+                logger.info("🎤 DJ: (runtime TTS)")
             except Exception as e:
-                logger.debug(f"DJ phrase skip: {e}")
+                logger.warning(f"DJ phrase failed: {e}")
         
         # Prepare track (fade in/out)
         prepared = await self.mixer.prepare_music_track(track)
         self.streamer.add_to_playlist(prepared)
-        
-        logger.debug(f"🎵 Added music: {track.name}")
+        logger.info(f"🎵 MUSIC: {track.name}")
     
     async def generate_time_announcement(self):
         """Generate current time announcement"""

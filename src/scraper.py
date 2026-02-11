@@ -210,7 +210,8 @@ class WeatherFetcher:
         
     async def __aenter__(self):
         self.session = aiohttp.ClientSession(
-            timeout=aiohttp.ClientTimeout(total=10)
+            timeout=aiohttp.ClientTimeout(total=10),
+            headers={"User-Agent": "LuchsheeIIRadio/1.0 (radio streaming)"}
         )
         return self
         
@@ -219,30 +220,49 @@ class WeatherFetcher:
             await self.session.close()
     
     async def get_weather(self, city: str = None) -> Optional[dict]:
-        """Get current weather for a city"""
+        """Get current weather. Tries wttr.in, fallback to Open-Meteo (free, no key)."""
         city = city or config.WEATHER_CITY
+        city_name = city.split(",")[0].strip()
         
-        # Using wttr.in - free, no API key needed
+        # 1. Try Open-Meteo (reliable, free, no key)
+        coords = {"Moscow": (55.7558, 37.6173), "Belgrade": (44.8176, 20.4630)}
+        lat, lon = coords.get(city_name, (55.7558, 37.6173))
         try:
-            url = f"https://wttr.in/{city}?format=j1"
+            url = f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&current=temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m"
+            async with self.session.get(url) as response:
+                if response.status == 200:
+                    data = await response.json()
+                    c = data.get("current", {})
+                    code = c.get("weather_code", 0)
+                    desc = {0: "ясно", 1: "преимущественно ясно", 2: "переменная облачность",
+                            3: "пасмурно", 45: "туман", 61: "дождь", 80: "ливень"}.get(code, "облачно")
+                    return {
+                        "city": city_name,
+                        "temp": int(c.get("temperature_2m", 0)),
+                        "description": desc,
+                        "humidity": int(c.get("relative_humidity_2m", 0)),
+                        "wind": int(c.get("wind_speed_10m", 0)),
+                    }
+        except Exception as e:
+            logger.debug(f"Open-Meteo fallback: {e}")
+        
+        # 2. Try wttr.in
+        try:
+            url = f"https://wttr.in/{city_name}?format=j1"
             async with self.session.get(url) as response:
                 if response.status == 200:
                     data = await response.json()
                     current = data.get("current_condition", [{}])[0]
-                    
                     return {
-                        "city": city.split(",")[0],
+                        "city": city_name,
                         "temp": current.get("temp_C", "?"),
-                        "feels_like": current.get("FeelsLikeC", "?"),
                         "description": current.get("weatherDesc", [{}])[0].get("value", ""),
                         "humidity": current.get("humidity", "?"),
                         "wind": current.get("windspeedKmph", "?"),
-                        "wind_dir": current.get("winddir16Point", ""),
                     }
-                    
         except Exception as e:
-            logger.error(f"Weather fetch error: {e}")
-            
+            logger.error(f"🌤️ Weather fetch error: {type(e).__name__}: {e}")
+        
         return None
 
 

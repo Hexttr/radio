@@ -214,38 +214,30 @@ class AudioMixer:
         fade_in: float = 2,
         fade_out: float = 2
     ) -> Path:
-        """Prepare a music track with fades and optional trimming"""
+        """Prepare a music track with fades. Uses actual length for short tracks."""
         if not self._verify_ffmpeg():
-            return music_path  # Return as-is if no FFmpeg
-        duration = duration or config.MUSIC_TRACK_LENGTH
+            return music_path
+        max_duration = duration or config.MUSIC_TRACK_LENGTH
+        actual_duration = await self._get_duration(music_path)
+        use_duration = min(max_duration, actual_duration)
         output_path = self.output_dir / f"music_{music_path.stem}_{uuid.uuid4().hex[:8]}.mp3"
         
-        # Build filter
         filters = []
         if fade_in:
-            filters.append(f"afade=t=in:st=0:d={fade_in}")
-        if fade_out:
-            filters.append(f"afade=t=out:st={duration-fade_out}:d={fade_out}")
-            
+            filters.append(f"afade=t=in:st=0:d={min(fade_in, use_duration/2)}")
+        if fade_out and use_duration > fade_out:
+            start_out = max(0, use_duration - fade_out)
+            filters.append(f"afade=t=out:st={start_out}:d={fade_out}")
         filter_str = ",".join(filters) if filters else "anull"
         
         cmd = [
-            config.FFMPEG_CMD, "-y",
-            "-i", str(music_path),
-            "-t", str(duration),
-            "-af", filter_str,
-            "-c:a", "libmp3lame",
-            "-b:a", f"{config.STREAM_BITRATE}k",
+            config.FFMPEG_CMD, "-y", "-i", str(music_path),
+            "-t", str(use_duration), "-af", filter_str,
+            "-c:a", "libmp3lame", "-b:a", f"{config.STREAM_BITRATE}k",
             str(output_path)
         ]
-        
-        process = await asyncio.create_subprocess_exec(
-            *cmd,
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE
-        )
-        await process.communicate()
-        
+        proc = await asyncio.create_subprocess_exec(*cmd, stdout=asyncio.subprocess.DEVNULL, stderr=asyncio.subprocess.PIPE)
+        await proc.communicate()
         return output_path
     
     async def _get_duration(self, audio_path: Path) -> float:
