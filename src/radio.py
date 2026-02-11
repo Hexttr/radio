@@ -146,8 +146,24 @@ class PirateRadio:
             logger.info("No music found, generating sample...")
             await MusicDownloader.download_sample_music()
         
+        # Разогрев Ollama (модель в память) — иначе первый запрос даёт 502
+        if config.AI_BACKEND == "ollama" and self.writer.client:
+            await self._warm_ollama()
+        
         # Предсгенерировать реплики диджея (избежать падений TTS во время эфира)
         await self._warm_dj_phrases()
+    
+    async def _warm_ollama(self):
+        """Прогреть Ollama — первый запрос грузит модель (иначе 502)"""
+        try:
+            r = await self.writer.client.chat.completions.create(
+                model=self.writer.model,
+                messages=[{"role": "user", "content": "Hi"}],
+                max_tokens=5,
+            )
+            logger.info("Ollama warmed up")
+        except Exception as e:
+            logger.warning(f"Ollama warmup: {e} — возможно Ollama не запущен или модель не загружена")
     
     async def _warm_dj_phrases(self):
         """Pre-generate DJ phrases at startup for reliable playback"""

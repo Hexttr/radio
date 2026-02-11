@@ -123,10 +123,8 @@ class SimpleHTTPStreamer:
         return resp
     
     async def _read_file(self, path: Path) -> AsyncIterator[bytes]:
-        """Читает файл чанками в темпе ~realtime."""
+        """Читает файл чанками. Без throttle — паузы вызывали buffer underrun и остановку потока."""
         chunk_size = 65536
-        # 128kbps = 16 KB/s → 64KB chunk ≈ 4 sec реального времени
-        delay = (chunk_size / (config.STREAM_BITRATE * 125)) * 0.7
         
         try:
             with open(path, 'rb') as f:
@@ -136,8 +134,6 @@ class SimpleHTTPStreamer:
                     if not data:
                         break
                     yield data
-                    if len(data) == chunk_size:
-                        await asyncio.sleep(delay)
         except FileNotFoundError:
             logger.warning(f"File not found: {path}")
         except Exception as e:
@@ -178,7 +174,9 @@ audio {{ width: 300px; margin: 20px; }}
 </div>
 <script>
 const a = document.getElementById('radio');
-a.addEventListener('error', () => {{ setTimeout(() => {{ a.src = '/stream?r=' + Date.now(); a.play(); }}, 3000); }});
+function reconnect() {{ a.src = '/stream?r=' + Date.now(); a.play(); }}
+a.addEventListener('error', () => {{ setTimeout(reconnect, 2000); }});
+a.addEventListener('ended', () => {{ setTimeout(reconnect, 500); }});
 setInterval(async () => {{
   try {{ const r = await fetch('/status'); const d = await r.json(); document.getElementById('status').textContent = 'Queue: ' + d.playlist_length; }} catch(e) {{}}
 }}, 5000);

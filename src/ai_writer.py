@@ -22,6 +22,7 @@ def _create_ai_client() -> Any:
         return AsyncOpenAI(
             base_url=config.OLLAMA_BASE_URL,
             api_key="ollama",
+            timeout=120.0,  # Ollama может грузить модель 30-60 сек
         )
     else:
         from groq import AsyncGroq

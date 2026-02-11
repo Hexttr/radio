@@ -214,12 +214,12 @@ class AudioMixer:
         fade_in: float = 2,
         fade_out: float = 2
     ) -> Path:
-        """Prepare a music track with fades. Uses actual length for short tracks."""
+        """Prepare a music track with fades. 0 = полный трек без обрезки."""
         if not self._verify_ffmpeg():
             return music_path
-        max_duration = duration or config.MUSIC_TRACK_LENGTH
+        max_duration = duration if duration is not None else config.MUSIC_TRACK_LENGTH
         actual_duration = await self._get_duration(music_path)
-        use_duration = min(max_duration, actual_duration)
+        use_duration = actual_duration if (max_duration is None or max_duration <= 0) else min(max_duration, actual_duration)
         output_path = self.output_dir / f"music_{music_path.stem}_{uuid.uuid4().hex[:8]}.mp3"
         
         filters = []

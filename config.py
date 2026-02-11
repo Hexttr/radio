@@ -47,7 +47,7 @@ VOICE_JINGLE = os.getenv("VOICE_JINGLE", "ru-RU-DmitryNeural")
 # Как часто вставки (в секундах)
 NEWS_INTERVAL = int(os.getenv("NEWS_INTERVAL", "120"))      # TODO: вернуть 900 (15 мин) после теста
 WEATHER_INTERVAL = int(os.getenv("WEATHER_INTERVAL", "90"))   # TODO: вернуть 1800 (30 мин) после теста
-MUSIC_TRACK_LENGTH = int(os.getenv("MUSIC_TRACK_LENGTH", "180"))  # 3 min songs
+MUSIC_TRACK_LENGTH = int(os.getenv("MUSIC_TRACK_LENGTH", "0"))  # 0 = полный трек, иначе лимит в сек
 
 # Audio Settings
 SAMPLE_RATE = 24000
