@@ -44,7 +44,7 @@ class PirateRadio:
         self.writer = AIWriter()
         self.tts = TTSEngine()
         self.mixer = AudioMixer()
-        self.streamer = SimpleHTTPStreamer(port=9090)
+        self.streamer = SimpleHTTPStreamer(port=config.STREAM_PORT)
         
         self.is_running = False
         self.last_news_time: Optional[datetime] = None
@@ -84,7 +84,7 @@ class PirateRadio:
                 break
             await self._add_music_track()
         
-        logger.info(f"📻 Radio is LIVE at http://localhost:9090")
+        logger.info(f"📻 Radio is LIVE at http://localhost:{config.STREAM_PORT}")
         
         # Wait for shutdown
         try:
@@ -282,6 +282,15 @@ class PirateRadio:
                 logger.error(f"Music loop error: {e}")
                 await asyncio.sleep(10)
     
+    def _is_news_or_weather_due(self) -> bool:
+        """Check if news or weather is scheduled (skip DJ phrase before those)"""
+        now = datetime.now()
+        news_due = (self.last_news_time is None or
+                    now - self.last_news_time > timedelta(seconds=config.NEWS_INTERVAL))
+        weather_due = (self.last_weather_time is None or
+                       now - self.last_weather_time > timedelta(seconds=config.WEATHER_INTERVAL))
+        return news_due or weather_due
+
     async def _add_music_track(self):
         """Add a music track to playlist"""
         music_files = self.mixer.get_music_library()
@@ -312,9 +321,9 @@ class PirateRadio:
         import random
         track = random.choice(music_files)
         
-        # Реплика диджея перед каждым треком
+        # Реплика диджея перед каждым треком (если не запланированы новости или погода)
         phrases = getattr(config, "DJ_PHRASES_RU", [])
-        if phrases:
+        if phrases and not self._is_news_or_weather_due():
             phrase = random.choice(phrases)
             try:
                 dj_audio = await self.tts.synthesize(

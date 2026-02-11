@@ -45,8 +45,8 @@ VOICE_WEATHER = os.getenv("VOICE_WEATHER", "ru-RU-SvetlanaNeural")
 VOICE_JINGLE = os.getenv("VOICE_JINGLE", "ru-RU-DmitryNeural")
 
 # Как часто вставки (в секундах)
-NEWS_INTERVAL = int(os.getenv("NEWS_INTERVAL", "900"))      # новости: каждые 15 мин
-WEATHER_INTERVAL = int(os.getenv("WEATHER_INTERVAL", "1800"))  # погода: каждые 30 мин
+NEWS_INTERVAL = int(os.getenv("NEWS_INTERVAL", "120"))      # TODO: вернуть 900 (15 мин) после теста
+WEATHER_INTERVAL = int(os.getenv("WEATHER_INTERVAL", "90"))   # TODO: вернуть 1800 (30 мин) после теста
 MUSIC_TRACK_LENGTH = int(os.getenv("MUSIC_TRACK_LENGTH", "180"))  # 3 min songs
 
 # Audio Settings
@@ -73,6 +73,7 @@ RSS_FEEDS = [
 MAX_NEWS_ITEMS = 10
 
 # Stream Settings
+STREAM_PORT = int(os.getenv("STREAM_PORT", "9090"))
 ICECAST_HOST = os.getenv("ICECAST_HOST", "localhost")
 ICECAST_PORT = int(os.getenv("ICECAST_PORT", "8000"))
 ICECAST_SOURCE_PASSWORD = os.getenv("ICECAST_PASSWORD", "hackme")

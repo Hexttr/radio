@@ -64,9 +64,9 @@
 # 2. Запуск
 docker-compose up -d
 
-# 3. Слушать
-# http://localhost:8080/   (веб-плеер)
-# http://localhost:8080/stream  (поток)
+# 3. Слушать (порт по умолчанию 9090, задать STREAM_PORT в .env при необходимости)
+# http://localhost:9090/   (веб-плеер)
+# http://localhost:9090/stream  (поток)
 ```
 
 ## 📁 Struktura
@@ -111,9 +111,9 @@ Za engleski:
 
 ## 📻 Адреса потока
 
-- **Веб-плеер:** `http://localhost:8080/`
-- **Поток MP3:** `http://localhost:8080/stream`
-- **Статус (JSON):** `http://localhost:8080/status`
+- **Веб-плеер:** `http://localhost:9090/` (порт задаётся через `STREAM_PORT` в .env)
+- **Поток MP3:** `http://localhost:9090/stream`
+- **Статус (JSON):** `http://localhost:9090/status`
 
 ## 🆓 Besplatni Servisi
 

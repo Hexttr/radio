@@ -6,6 +6,7 @@ import asyncio
 import logging
 import random
 import subprocess
+import uuid
 from pathlib import Path
 from typing import List, Optional
 import shutil
@@ -69,6 +70,7 @@ class AudioMixer:
         
         # Get voice duration
         voice_duration = await self._get_duration(voice_path)
+        fade_out_start = max(0.0, voice_duration - 2)
         
         # FFmpeg command to mix audio
         # Voice at full volume, music lowered
@@ -77,7 +79,7 @@ class AudioMixer:
             "-i", str(voice_path),
             "-i", str(music_path),
             "-filter_complex",
-            f"[1:a]volume={music_volume},afade=t=in:st=0:d=2,afade=t=out:st={voice_duration-2}:d=2[music];"
+            f"[1:a]volume={music_volume},afade=t=in:st=0:d=2,afade=t=out:st={fade_out_start}:d=2[music];"
             f"[0:a][music]amix=inputs=2:duration=first:dropout_transition=2[out]",
             "-map", "[out]",
             "-ac", "2",
@@ -216,7 +218,7 @@ class AudioMixer:
         if not self._verify_ffmpeg():
             return music_path  # Return as-is if no FFmpeg
         duration = duration or config.MUSIC_TRACK_LENGTH
-        output_path = self.output_dir / f"music_{music_path.stem}.mp3"
+        output_path = self.output_dir / f"music_{music_path.stem}_{uuid.uuid4().hex[:8]}.mp3"
         
         # Build filter
         filters = []

@@ -53,9 +53,10 @@ class TTSEngine:
                 logger.debug(f"Using cached TTS: {cache_key}")
                 return cached_path
         
-        # Generate output path
+        # Generate output path (use stable hash to avoid collisions)
         if output_path is None:
-            output_path = config.OUTPUT_DIR / f"tts_{hash(text) % 10000}.mp3"
+            cache_key = self._get_cache_key(text, voice, rate, pitch)
+            output_path = config.OUTPUT_DIR / f"tts_{cache_key}.mp3"
         
         try:
             # Create communicate object
