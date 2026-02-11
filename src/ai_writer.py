@@ -21,11 +21,11 @@ class AIWriter:
         self.api_key = (config.GROQ_API_KEY or "").strip()
         self.client = AsyncGroq(api_key=self.api_key) if self.api_key else None
         
-    async def generate_news_segment(self, news_items: List[NewsItem]) -> str:
-        """Generate a complete news segment from news items"""
+    async def generate_news_segment(self, news_items: List[NewsItem]) -> Optional[str]:
+        """Generate a complete news segment from news items. Returns None to skip (no filler)."""
         
         if not news_items:
-            return self._generate_filler()
+            return None  # Не озвучиваем filler — просто пропускаем блок новостей
         
         # Build news list for prompt
         news_text = "\n".join([
@@ -45,8 +45,8 @@ ITEMS:
 STYLE: {config.NEWS_STYLE}"""
 
         if not self.client:
-            logger.warning("GROQ_API_KEY not set - using filler. Get free key at console.groq.com")
-            return self._generate_filler()
+            logger.warning("GROQ_API_KEY not set - skipping news. Get free key at console.groq.com")
+            return None
         system_prompt = config.NEWS_SYSTEM_PROMPTS.get(lang, config.NEWS_SYSTEM_PROMPTS["en"]).format(style=config.NEWS_STYLE)
         try:
             response = await self.client.chat.completions.create(
@@ -65,7 +65,7 @@ STYLE: {config.NEWS_STYLE}"""
             
         except Exception as e:
             logger.error(f"AI generation error: {e}")
-            return self._generate_filler()
+            return None
     
     async def generate_weather_report(self, weather_data: dict) -> str:
         """Generate a weather report"""
@@ -162,11 +162,6 @@ NO emoji or special characters"""
         except Exception as e:
             logger.error(f"Custom segment error: {e}")
             return ""
-    
-    def _generate_filler(self) -> str:
-        """Generate filler content when API fails"""
-        fillers = config.FILLER_TEXTS.get(config.PROMPT_LANG, config.FILLER_TEXTS["en"])
-        return random.choice(fillers)
 
 
 # Test

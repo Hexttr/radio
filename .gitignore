@@ -13,6 +13,7 @@ ENV/
 # Environment
 .env
 .env.local
+ngrok.yml
 
 # Output files
 output/

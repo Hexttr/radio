@@ -78,6 +78,12 @@ class PirateRadio:
         await self._generate_jingle()
         await self._generate_intro()
         
+        # Предзаполняем плейлист для 24/7 (буфер 5+ позиций)
+        for _ in range(5):
+            if len(self.streamer.playlist) >= 6:
+                break
+            await self._add_music_track()
+        
         logger.info(f"📻 Radio is LIVE at http://localhost:9090")
         
         # Wait for shutdown
@@ -103,12 +109,36 @@ class PirateRadio:
         
         logger.info("Radio station stopped")
     
+    async def _ensure_silence_exists(self):
+        """Создать silence.mp3 для непрерывного потока 24/7"""
+        silence_path = config.OUTPUT_DIR / "silence.mp3"
+        if silence_path.exists():
+            return
+        try:
+            proc = await asyncio.create_subprocess_exec(
+                config.FFMPEG_CMD, "-y",
+                "-f", "lavfi",
+                "-i", "anullsrc=r=44100:cl=stereo",
+                "-t", "30",
+                "-c:a", "libmp3lame",
+                str(silence_path),
+                stdout=asyncio.subprocess.DEVNULL,
+                stderr=asyncio.subprocess.DEVNULL,
+            )
+            await proc.wait()
+            logger.info("Created silence.mp3 for 24/7 stream")
+        except FileNotFoundError:
+            logger.warning("FFmpeg not found - cannot create silence, 24/7 may have gaps")
+    
     async def _initialize(self):
         """Initialize components"""
         # Create directories
         config.MUSIC_DIR.mkdir(exist_ok=True)
         config.OUTPUT_DIR.mkdir(exist_ok=True)
         config.CACHE_DIR.mkdir(exist_ok=True)
+        
+        # Всегда создаём silence.mp3 для 24/7 (fallback когда плейлист пуст)
+        await self._ensure_silence_exists()
         
         # Download sample music if none exists
         if not list(config.MUSIC_DIR.glob("*.mp3")):
@@ -161,11 +191,13 @@ class PirateRadio:
                 news_items = await scraper.fetch_all()
             
             if not news_items:
-                logger.warning("No news items found")
+                logger.debug("No news from last 24h — skipping segment")
                 return
             
-            # 2. Generate script
-            script = await self.writer.generate_news_segment(news_items[:5])
+            # 2. Generate script (None = skip, no filler)
+            script = await self.writer.generate_news_segment(news_items[:config.MAX_NEWS_ITEMS])
+            if not script:
+                return
             logger.debug(f"News script: {script[:100]}...")
             
             # 3. Convert to speech
@@ -238,11 +270,11 @@ class PirateRadio:
         """Background task: Keep music playing"""
         while self.is_running:
             try:
-                # If playlist is getting low, add music
-                if len(self.streamer.playlist) < 3:
+                # Держим буфер 5+ позиций для 24/7 без пауз
+                while len(self.streamer.playlist) < 5 and self.is_running:
                     await self._add_music_track()
                 
-                await asyncio.sleep(10)
+                await asyncio.sleep(5)
                 
             except asyncio.CancelledError:
                 break

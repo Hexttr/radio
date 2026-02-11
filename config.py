@@ -70,7 +70,7 @@ REDDIT_SUBREDDITS = [
 RSS_FEEDS = [
     "https://lenta.ru/rss/news",
 ]
-MAX_NEWS_ITEMS = 5
+MAX_NEWS_ITEMS = 10
 
 # Stream Settings
 ICECAST_HOST = os.getenv("ICECAST_HOST", "localhost")

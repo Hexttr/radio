@@ -129,13 +129,16 @@ class NewsScraper:
                         
                         source_name = feed.feed.get("title", feed_url)
                         
-                        for entry in feed.entries[:5]:
+                        cutoff = datetime.now() - timedelta(hours=24)  # Только за последние сутки
+                        for entry in feed.entries[:20]:
                             # Parse timestamp
                             published = entry.get("published_parsed") or entry.get("updated_parsed")
                             if published:
                                 timestamp = datetime(*published[:6])
                             else:
                                 timestamp = datetime.now()
+                            if timestamp < cutoff:
+                                continue  # Пропускаем старые новости
                             
                             # Get summary
                             summary = entry.get("summary", entry.get("description", ""))

@@ -217,14 +217,19 @@ class SimpleHTTPStreamer:
                         await response.write(chunk)
                     self.playlist.popleft()
                 else:
-                    # Keep stream alive with silence so client doesn't freeze
-                    if silence_path.exists():
-                        async for chunk in self._read_audio_file(silence_path):
-                            await response.write(chunk)
+                    # Бесконечный цикл тишины — никогда не останавливаем поток 24/7
+                    while not self.playlist:
+                        if silence_path.exists():
+                            async for chunk in self._read_audio_file(silence_path):
+                                await response.write(chunk)
+                                if self.playlist:
+                                    break
                             if self.playlist:
                                 break
-                    else:
-                        await asyncio.sleep(0.05)
+                        else:
+                            # Создаём silence на лету если вдруг нет
+                            silence_path.parent.mkdir(exist_ok=True)
+                            await asyncio.sleep(0.1)
                     
         except asyncio.CancelledError:
             pass
@@ -235,12 +240,10 @@ class SimpleHTTPStreamer:
     
     async def _read_audio_file(self, path: Path) -> AsyncIterator[bytes]:
         """Read audio file in chunks (non-blocking to avoid freezing the event loop)"""
-        chunk_size = 8192
-        # ~128 kbps = 16000 bytes/sec → sleep per chunk
-        throttle = chunk_size / (config.STREAM_BITRATE * 1000 / 8)
-        
-        def read_chunk(f):
-            return f.read(chunk_size)
+        chunk_size = 65536  # 64KB — больше буфер, меньше стыков между чанками
+        # Отправляем ~1.5x быстрее реального времени — буфер не опустошается на переходах
+        bytes_per_sec = config.STREAM_BITRATE * 1000 / 8
+        throttle = (chunk_size / bytes_per_sec) * 0.65  # ~1.5x скорость
         
         try:
             with open(path, 'rb') as f:
@@ -250,7 +253,9 @@ class SimpleHTTPStreamer:
                     if not chunk:
                         break
                     yield chunk
-                    await asyncio.sleep(throttle)
+                    # Не ждём после последнего чанка — сразу переходим к следующему файлу
+                    if len(chunk) >= chunk_size:
+                        await asyncio.sleep(throttle)
         except FileNotFoundError:
             logger.warning(f"Stream: file not found {path}")
         except Exception as e:
@@ -305,13 +310,42 @@ class SimpleHTTPStreamer:
                 <div class="emoji">🏴‍☠️📻</div>
                 <h1>{config.RADIO_NAME}</h1>
                 <p>{config.RADIO_DESCRIPTION}</p>
-                <audio controls autoplay>
+                <audio id="radio" controls autoplay preload="auto">
                     <source src="/stream" type="audio/mpeg">
                     Your browser does not support audio.
                 </audio>
                 <div class="status" id="status">Loading...</div>
             </div>
             <script>
+                const audio = document.getElementById('radio');
+                let reconnectTimeout = null;
+
+                function reconnect() {{
+                    if (reconnectTimeout) return;
+                    reconnectTimeout = setTimeout(() => {{
+                        reconnectTimeout = null;
+                        audio.src = '/stream?t=' + Date.now();
+                        audio.load();
+                        audio.play().catch(() => {{}});
+                    }}, 800);
+                }}
+
+                function tryPlay() {{
+                    if (audio.paused) {{
+                        audio.play().catch(() => reconnect());
+                    }}
+                }}
+
+                audio.addEventListener('ended', reconnect);
+                audio.addEventListener('stalled', reconnect);
+                audio.addEventListener('error', reconnect);
+                audio.addEventListener('waiting', () => {{ tryPlay(); }});
+                audio.addEventListener('pause', () => {{
+                    setTimeout(tryPlay, 1500);
+                }});
+
+                setInterval(tryPlay, 2500);
+
                 setInterval(async () => {{
                     const res = await fetch('/status');
                     const data = await res.json();

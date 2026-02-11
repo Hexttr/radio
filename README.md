@@ -44,7 +44,18 @@
    ```bash
    python -m src.radio
    ```
-6. Откройте в браузере: **http://localhost:8080** — там плеер и поток `/stream`.
+6. Откройте в браузере: **http://localhost:9090** — там плеер и поток `/stream`.
+
+### Доступ из интернета (ngrok)
+
+1. Скачайте [ngrok](https://ngrok.com/download), распакуйте и добавьте в PATH.
+2. Получите authtoken на [dashboard.ngrok.com](https://dashboard.ngrok.com/get-started/your-authtoken).
+3. Создайте `ngrok.yml` в папке проекта (см. `ngrok.yml.example`):
+   ```yaml
+   version: "2"
+   authtoken: YOUR_TOKEN
+   ```
+4. Запуск: **`start-all.bat`** — поднимет радио и туннель. URL для слушателей появится в окне ngrok.
 
 ### Docker
 
