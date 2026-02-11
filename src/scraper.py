@@ -39,7 +39,7 @@ class NewsScraper:
     async def __aenter__(self):
         self.session = aiohttp.ClientSession(
             timeout=aiohttp.ClientTimeout(total=30),
-            headers={"User-Agent": "PirateRadioAI/1.0"}
+            headers={"User-Agent": "LuchsheeIIRadio/1.0"}
         )
         return self
         

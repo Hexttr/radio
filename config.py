@@ -1,5 +1,5 @@
 """
-Pirate Radio AI - Configuration
+Лучшее ИИ Радио - Configuration
 """
 import os
 import sys
@@ -34,7 +34,7 @@ for d in [MUSIC_DIR, OUTPUT_DIR, CACHE_DIR]:
     d.mkdir(exist_ok=True)
 
 # Radio Settings
-RADIO_NAME = "Pirate AI Radio 🏴‍☠️"
+RADIO_NAME = "Лучшее ИИ Радио"
 RADIO_DESCRIPTION = "24/7 музыка и новости"
 RADIO_GENRE = "News/Talk"
 
@@ -68,9 +68,7 @@ REDDIT_SUBREDDITS = [
     "serbia",  # Za lokalne vijesti
 ]
 RSS_FEEDS = [
-    "https://www.b92.net/info/rss/vesti.xml",
-    "https://feeds.bbci.co.uk/news/world/rss.xml",
-    "https://rss.nytimes.com/services/xml/rss/nyt/World.xml",
+    "https://lenta.ru/rss/news",
 ]
 MAX_NEWS_ITEMS = 5
 
@@ -87,7 +85,7 @@ WEATHER_CITY = os.getenv("WEATHER_CITY", "Moscow,RU")
 
 # Prompts by language (lang code: ru, en, sr)
 NEWS_SYSTEM_PROMPTS = {
-    "ru": """Ты ведущий радио на Pirate AI Radio. Читай новости на русском языке.
+    "ru": """Ты ведущий радио на Лучшее ИИ Радио. Читай новости на русском языке.
 Стиль: {style}
 Правила:
 - Кратко и ясно
@@ -95,7 +93,7 @@ NEWS_SYSTEM_PROMPTS = {
 - Короткие переходы между новостями
 - Без эмодзи и спецсимволов
 - 2-3 предложения на новость""",
-    "en": """You are a radio host on Pirate AI Radio. Read the news in English.
+    "en": """You are a radio host on Лучшее ИИ Радио. Read the news in English.
 Style: {style}
 Rules:
 - Be concise and clear
@@ -103,7 +101,7 @@ Rules:
 - Short transitions between stories
 - No emoji or special characters
 - 2-3 sentences per story""",
-    "sr": """Ti si profesionalni radio voditelj na Pirate AI Radio. 
+    "sr": """Ti si profesionalni radio voditelj na Лучшее ИИ Радио. 
 Čitaš vijesti na srpskom jeziku.
 Stil: {style}
 Pravila:
@@ -142,19 +140,19 @@ WEATHER_PROMPT = WEATHER_PROMPTS.get("sr", list(WEATHER_PROMPTS.values())[0])
 
 JINGLE_TEXTS_BY_LANG = {
     "ru": [
-        "Pirate AI Radio. Музыка. Новости. Круглые сутки.",
-        "Вы слушаете Pirate AI Radio. Ваш источник информации.",
-        "Pirate Radio. Где ИИ встречается с музыкой.",
+        "Лучшее ИИ Радио. Музыка. Новости. Круглые сутки.",
+        "Вы слушаете Лучшее ИИ Радио. Ваш источник информации.",
+        "Лучшее ИИ Радио. Где ИИ встречается с музыкой.",
     ],
     "en": [
-        "Pirate AI Radio. Music. News. Twenty-four seven.",
-        "You're listening to Pirate AI Radio. Your source of information.",
-        "Pirate Radio. Where AI meets music.",
+        "Лучшее ИИ Радио. Музыка. Новости. Круглые сутки.",
+        "You're listening to Лучшее ИИ Радио. Your source of information.",
+        "Лучшее ИИ Радио. Where AI meets music.",
     ],
     "sr": [
-        "Pirate AI Radio. Muzika. Vijesti. Dvadeset četiri sata.",
-        "Slušate Pirate AI Radio. Vaš izvor informacija.",
-        "Pirate Radio. Gdje AI sreće muziku.",
+        "Лучшее ИИ Радио. Muzika. Vijesti. Dvadeset četiri sata.",
+        "Slušate Лучшее ИИ Радио. Vaš izvor informacija.",
+        "Лучшее ИИ Радио. Gdje AI sreće muziku.",
     ],
 }
 # News prompt instructions (language for AI output)
@@ -186,72 +184,96 @@ def _prompt_lang():
 PROMPT_LANG = _prompt_lang()
 JINGLE_TEXTS = JINGLE_TEXTS_BY_LANG.get(PROMPT_LANG, JINGLE_TEXTS_BY_LANG["en"])
 # Jingle before news block (short phrase)
-JINGLE_NEWS_PHRASE = {"ru": "Новости на Pirate Radio.", "en": "News on Pirate Radio.", "sr": "Vijesti na Pirate Radiju."}
+JINGLE_NEWS_PHRASE = {"ru": "Новости на Лучшее ИИ Радио.", "en": "News on Лучшее ИИ Радио.", "sr": "Vijesti na Лучшее ИИ Radiju."}
 JINGLE_NEWS = JINGLE_NEWS_PHRASE.get(PROMPT_LANG, JINGLE_NEWS_PHRASE["en"])
 
 # Filler / intro / outro by language (for AI writer)
 FILLER_TEXTS = {
     "ru": [
-        "Пока нет свежих новостей. Продолжайте слушать музыку на Pirate Radio.",
+        "Пока нет свежих новостей. Продолжайте слушать музыку на Лучшее ИИ Радио.",
         "Новости готовятся. А пока — музыка.",
-        "Спасибо, что слушаете Pirate Radio. Новости скоро.",
+        "Спасибо, что слушаете Лучшее ИИ Радио. Новости скоро.",
     ],
     "en": [
-        "No news updates at the moment. Enjoy the music on Pirate Radio.",
+        "No news updates at the moment. Enjoy the music on Лучшее ИИ Радио.",
         "News is being prepared. In the meantime, enjoy the music.",
-        "Thanks for listening to Pirate Radio. News coming up soon.",
+        "Thanks for listening to Лучшее ИИ Радио. News coming up soon.",
     ],
     "sr": [
-        "Trenutno nemamo novih vijesti. Nastavite da uživate u muzici na Pirate Radiju.",
+        "Trenutno nemamo novih vijesti. Nastavite da uživate u muzici na Лучшее ИИ Radiju.",
         "Vijesti se pripremaju. U međuvremenu, uživajte u muzici.",
-        "Hvala što slušate Pirate Radio. Vijesti stižu uskoro.",
+        "Hvala što slušate Лучшее ИИ Радио. Vijesti stižu uskoro.",
     ],
 }
 INTRO_TEXTS = {
     "ru": [
-        "Добро пожаловать на Pirate AI Radio! Музыка и новости круглые сутки.",
-        "Это Pirate Radio. Автоматически. Без остановки.",
-        "Pirate AI Radio в эфире! Оставайтесь с нами.",
-        "Вы слушаете Pirate Radio — где технологии встречаются с музыкой.",
+        "Добро пожаловать на Лучшее ИИ Радио! Музыка и новости круглые сутки.",
+        "Это Лучшее ИИ Радио. Автоматически. Без остановки.",
+        "Лучшее ИИ Радио в эфире! Оставайтесь с нами.",
+        "Вы слушаете Лучшее ИИ Радио — где технологии встречаются с музыкой.",
     ],
     "en": [
-        "Welcome to Pirate AI Radio! Your source of music and news, twenty-four seven.",
-        "This is Pirate Radio. Automated. Infinite. Just for you.",
-        "Pirate AI Radio on the air! Stay with us.",
-        "You're listening to Pirate Radio, where tech meets music.",
+        "Welcome to Лучшее ИИ Радио! Your source of music and news, twenty-four seven.",
+        "This is Лучшее ИИ Радио. Automated. Infinite. Just for you.",
+        "Лучшее ИИ Радио on the air! Stay with us.",
+        "You're listening to Лучшее ИИ Радио, where tech meets music.",
     ],
     "sr": [
-        "Dobrodošli na Pirate AI Radio! Vaš izvor muzike i informacija, dvadeset četiri sata.",
-        "Ovo je Pirate Radio. Automatizovano. Beskonačno. Samo za vas.",
-        "Pirate AI Radio na talasima! Ostanite s nama.",
-        "Slušate Pirate Radio, gdje tehnologija sreće muziku.",
+        "Dobrodošli na Лучшее ИИ Радио! Vaš izvor muzike i informacija, dvadeset četiri sata.",
+        "Ovo je Лучшее ИИ Радио. Automatizovano. Beskonačno. Samo za vas.",
+        "Лучшее ИИ Радио na talasima! Ostanite s nama.",
+        "Slušate Лучшее ИИ Радио, gdje tehnologija sreće muziku.",
     ],
 }
 OUTRO_TEXTS = {
     "ru": [
         "Это были новости. Продолжайте слушать.",
         "Спасибо, что были с нами. Возвращаемся к музыке.",
-        "Pirate Radio продолжает программу.",
+        "Лучшее ИИ Радио продолжает программу.",
         "Оставайтесь на волне, после музыки вернёмся.",
     ],
     "en": [
         "That was the news. Keep listening.",
         "Thanks for being with us. Music is back.",
-        "Pirate Radio continues the program.",
+        "Лучшее ИИ Радио continues the program.",
         "Stay tuned, we'll be back after the music.",
     ],
     "sr": [
         "To su bile vijesti. Nastavite da nas slušate.",
         "Hvala što ste bili s nama. Muzika se vraća.",
-        "Pirate Radio nastavlja sa programom.",
+        "Лучшее ИИ Радио nastavlja sa programom.",
         "Ostanite na vezi, vraćamo se nakon muzike.",
     ],
 }
 TIME_TEMPLATES = {
-    "ru": ["Сейчас {time}.", "Время {time}. Вы слушаете Pirate Radio.", "На Pirate Radio сейчас {time}."],
-    "en": ["The time is {time}.", "It's {time}. You're listening to Pirate Radio.", "On Pirate Radio it's {time}."],
-    "sr": ["Tačno je {time}.", "Vrijeme je {time}. Slušate Pirate Radio.", "Na Pirate Radiju je {time}."],
+    "ru": ["Сейчас {time}.", "Время {time}. Вы слушаете Лучшее ИИ Радио.", "На Лучшее ИИ Радио сейчас {time}."],
+    "en": ["The time is {time}.", "It's {time}. You're listening to Лучшее ИИ Радио.", "On Лучшее ИИ Радио it's {time}."],
+    "sr": ["Tačno je {time}.", "Vrijeme je {time}. Slušate Лучшее ИИ Радио.", "Na Лучшее ИИ Radiju je {time}."],
 }
+
+# Короткие реплики диджея между треками (когда нет новостей/погоды)
+DJ_PHRASES_RU = [
+    "Отличная песня! Следующий трек уже в эфире.",
+    "Спасибо, что слушаете нас. Продолжаем.",
+    "Приятной музыки! Оставайтесь на волне.",
+    "Вот это выбор! Слушайте дальше.",
+    "Лучшее ИИ Радио. Музыка без остановки.",
+    "Надеюсь, вам заходит. Ещё один трек.",
+    "Какая тема! Следующая композиция.",
+    "Держитесь, не переключайтесь.",
+    "Классно звучит. Продолжаем в том же духе.",
+    "Вы слушаете Лучшее ИИ Радио. Музыка 24/7.",
+    "Отличный трек. Что дальше?",
+    "Спасибо за внимание. Ещё музыка.",
+    "Вот так вот. Следующая песня.",
+    "Приятного прослушивания. Остаёмся в эфире.",
+    "Хорошая музыка никогда не заканчивается. Вот ещё.",
+    "Лучшее ИИ Радио. Ваш звук.",
+    "Зацените следующий трек.",
+    "Оставайтесь с нами. Продолжаем.",
+    "Ещё одна композиция для вас.",
+    "Музыка на связи. Слушайте дальше.",
+]
 
 # Logging
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")

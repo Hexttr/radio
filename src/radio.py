@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Pirate Radio AI - Main Orchestrator
+Лучшее ИИ Радио - Main Orchestrator
 The brain that coordinates everything
 """
 import asyncio
@@ -28,7 +28,7 @@ logger = logging.getLogger("PirateRadio")
 
 class PirateRadio:
     """
-    Main orchestrator for Pirate AI Radio
+    Main orchestrator for Лучшее ИИ Радио
     
     Coordinates all components:
     - Scrapes news periodically
@@ -279,6 +279,20 @@ class PirateRadio:
         
         import random
         track = random.choice(music_files)
+        
+        # Реплика диджея перед каждым треком
+        phrases = getattr(config, "DJ_PHRASES_RU", [])
+        if phrases:
+            phrase = random.choice(phrases)
+            try:
+                dj_audio = await self.tts.synthesize(
+                    phrase,
+                    voice=config.VOICE_JINGLE,
+                    output_path=None,  # TTS выберет путь, кеш по содержимому
+                )
+                self.streamer.add_to_playlist(dj_audio)
+            except Exception as e:
+                logger.debug(f"DJ phrase skip: {e}")
         
         # Prepare track (fade in/out)
         prepared = await self.mixer.prepare_music_track(track)
